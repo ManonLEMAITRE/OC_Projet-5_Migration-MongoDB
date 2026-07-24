@@ -1,0 +1,15 @@
+# Outils principaux
+pandas==2.2.0           # Package de manipulation et nettoyage des données CSV
+pymongo==4.6.0          # Librairie Driver MongoDB pour Python
+python-dotenv==1.0.0    # Gestion des variables d'environnement
+
+# Dépendances de Pandas (installées automatiquement)
+numpy==1.26.4           # Bibliothèque de calcul numérique
+python-dateutil==2.9.0.post0  # Utilitaires pour les dates
+pytz==2026.2            # Support des fuseaux horaires
+tzdata==2026.3          # Données de fuseaux horaires
+
+# Autres Dépendances (installées automatiquement)
+dnspython==2.8.0        # Support DNS pour la connexion MongoDB
+six==1.17.0             # Compatibilité Python 2/3
+
