@@ -21,14 +21,15 @@ Projet 5 - Migration MongoDB/
 ├── README.md                     # Documentation 
 ├── healthcare_dataset.csv        # Données brutes originales
 ├── healthcare_dataset_cleaned.csv # Données nettoyées
-├── clean_data.py                 # Script de nettoyage des données
-└── migration_mongodb.py         # Script de migration vers MongoDB
-
-Non crées pour l'instant :
-├── test_migration.py             # Script de validation post-migration
-├── crud_operations.py            # Opérations CRUD sur MongoDB
-└── create_indexes.py             # Création des index MongoDB
-
+├── Dockerfile                     # Image Docker de l'application Python
+├── docker-compose.yml             # Orchestration des services (app + MongoDB)
+├── .dockerignore                  # Fichiers exclus du build Docker
+├── orchestration_migration_complete.py  # Orchestrateur du pipeline complet
+├── 1.clean_data.py
+├── 2.migration_mongodb.py
+├── 3.test_migration.py
+├── 4.test_crud.py
+└── 5.generer_index.py
 
 ---
 
@@ -64,36 +65,48 @@ python clean_data.py
 - Génère `healthcare_dataset_cleaned.csv`
 
 #### Étape 3 : Migrer vers MongoDB
-python migrate_to_mongodb.py
+python migration_mongodb.py
 Insère 54 966 patients nettoyés dans MongoDB.
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 #### Étape 4 : Valider la migration
 python test_migration.py
 Vérifie que toutes les données sont bien en base.
 
 #### Étape 5 : Tester les opérations CRUD
-python crud_operations.py
+python test_crud.py
 Démontre Create, Read, Update, Delete sur les patients.
 
 #### Étape 6 : Créer les index
-python create_indexes.py
+python 5.generer_index.py
 
 Optimise les performances pour les requêtes fréquentes.
+
+--- 
+
+## 🐳 Exécution via Docker (recommandé)
+
+### Prérequis
+- Docker Desktop installé et lancé
+
+### Lancer le projet complet
+docker-compose up
+
+Cette commande :
+- Construit l'image Python (si nécessaire) et démarre MongoDB
+- Exécute automatiquement les 5 étapes du pipeline dans l'ordre :
+  nettoyage → migration → tests → CRUD → création des index
+- Chaque étape affiche ✅ (succès) ou ❌ (erreur), avec arrêt immédiat en cas d'échec
+
+### Architecture Docker
+- **Service `mongodb`** : image officielle `mongo:8.3.7`, données persistées dans le volume `mongo_data`
+- **Service `app`** : construit depuis le `Dockerfile` local (Python 3.12-slim), exécute `orchestration_migration_complete.py`
+- **Réseau nommé** : `healthcare_network`, permet aux deux services de communiquer via leur nom de service (`mongodb://mongodb:27017/`)
+- **Volumes** :
+  - `mongo_data` (volume Docker géré) : persistance des données MongoDB
+  - Bind mount du CSV : `./healthcare_dataset.csv:/app/healthcare_dataset.csv`
+
+### Arrêter et nettoyer
+docker-compose down
 
 ---
 
@@ -210,13 +223,6 @@ Pour la production, il faudrait :
 
 ---
 
-##  Prochaines Étapes
-
-- **Phase 2** : Conteneurisation avec Docker
-  - Dockerfile pour l'application Python
-  - Dockerfile pour MongoDB
-  - docker-compose.yml pour l'orchestration
-
 - **Phase 3** : Déploiement sur AWS
   - Amazon DocumentDB (MongoDB compatible)
   - Amazon ECS (Elastic Container Service)
@@ -227,8 +233,4 @@ Pour la production, il faudrait :
 ##  Auteur
 
 Manon Lemaitre - Data Engineer en formation
-
-##  Date
-
-Juillet 2026
 
