@@ -19,6 +19,11 @@ collection.delete_many({})
 # Charger les données nettoyées
 df = pd.read_csv('healthcare_dataset_cleaned.csv')
 
+# Refaire la conversion des colonnes dates en format datetime avant migration
+df['Date of Admission'] = pd.to_datetime(df['Date of Admission'])
+df['Discharge Date'] = pd.to_datetime(df['Discharge Date'])
+
+
 print(f"📊 Chargement de {len(df)} patients...")
 
 # Convertir chaque ligne du DataFrame en document MongoDB
