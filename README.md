@@ -2,175 +2,130 @@
 
 ## Contexte
 
-Ce projet consiste en la migration d'un dataset de patients (55 500 enregistrements) depuis un fichier CSV vers MongoDB. Les données sont préalablement nettoyées avant d'être insérées dans une base de données NoSQL (MongoDB) pour améliorer la scalabilité.
+Dans le cadre de ce projet de migartion de DataSoluTech, on m'a confié un dataset de patients (55 500 lignes) en CSV à migrer vers MongoDB. L'objectif : nettoyer les données, les migrer, conteneuriser le tout avec Docker, et préparer un futur déploiement sur AWS.
 
 ---
 
 ## Objectifs
 
-- Nettoyer les données (suppression des doublons, normalisation, typage)
-- Migrer les données vers MongoDB
-- Mettre en place une structure de base de données flexible et performante
+- Nettoyer les données (doublons, casse, typage des dates)
+- Migrer vers MongoDB
+- Mettre en place une structure de base flexible et des index pertinents
 - Conteneuriser l'application avec Docker
-- Préparer le déploiement sur AWS
+- Documenter la démarche
 
 ---
 
-## Structure du Projet
-```
+## Structure du projet
 Projet 5 - Migration MongoDB/
-├── requirements.txt                      # Dépendances Python
-├── README.md                             # Documentation
-├── healthcare_dataset.csv                # Données brutes originales
-├── healthcare_dataset_cleaned.csv        # Données nettoyées
-├── Dockerfile                            # Image Docker de l'application Python
-├── docker-compose.yml                    # Orchestration des services (app + MongoDB)
-├── .dockerignore                         # Fichiers exclus du build Docker
-├── orchestration_migration_complete.py   # Orchestrateur du pipeline complet
-├── 1.clean_data.py                       # Nettoyage des données
-├── 2.migration_mongodb.py                # Migration vers MongoDB
-├── 3.test_migration.py                   # Validation post-migration
-├── 4.test_crud.py                        # Opérations CRUD
-└── 5.generer_index.py                    # Création des index MongoDB
-```
+├── requirements.txt # Dépendances Python
+├── README.md
+├── healthcare_dataset.csv # Données brutes
+├── healthcare_dataset_cleaned.csv # Données nettoyées
+├── Dockerfile
+├── docker-compose.yml
+├── .dockerignore
+├── orchestration_migration_complete.py # Enchaîne les 5 scripts via subprocess
+├── db_utils.py # Connexion MongoDB centralisée (client + collection)
+├── 1.clean_data.py # Nettoyage des données
+├── 2.migration_mongodb.py # Migration vers MongoDB
+├── 3.test_migration.py # Validation post-migration
+├── 4.test_crud.py # Démonstration CRUD
+└── 5.generer_index.py # Création des index
+
+Tous les scripts sont découpés en fonctions (chargement, nettoyage, insertion, tests unitaires, etc.), avec un point d'entrée `if __name__ == "__main__":` à la fin de chaque fichier. La connexion à MongoDB (client + accès à la collection `patients`) est centralisée dans `db_utils.py` et importée partout où elle est nécessaire, plutôt que dupliquée dans chaque script.
 
 ---
 
-## 🐳 Exécution via Docker (méthode recommandée)
+## Exécution via Docker (recommandé)
 
 ### Prérequis
 - Docker Desktop installé et lancé
 
-### Lancer le projet complet
+### Lancer le projet
 ```bash
 docker-compose up
 ```
-
-Cette commande :
-- Construit l'image Python (si nécessaire) et démarre MongoDB
-- Exécute automatiquement les 5 étapes du pipeline dans l'ordre :
-  nettoyage → migration → tests → CRUD → création des index
-- Chaque étape affiche ✅ (succès) ou ❌ (erreur), avec arrêt immédiat en cas d'échec
+Ça construit l'image Python, démarre MongoDB, et exécute les 5 scripts dans l'ordre (nettoyage → migration → tests → CRUD → index). Si une étape échoue, le pipeline s'arrête.
 
 ### Vérifier le résultat
 ```bash
 docker exec -it mongodb mongosh
 ```
-Puis dans le shell Mongo :
 ```javascript
 use healthcare_db
-db.patients.countDocuments()   // doit retourner 54966
+db.patients.countDocuments()   // 54966 attendu
 ```
 
-### Architecture Docker
-- **Service `mongodb`** : image officielle `mongo:8.3.7`, données persistées dans le volume `mongo_data`
-- **Service `app`** : construit depuis le `Dockerfile` local (Python 3.12-slim), exécute `orchestration_migration_complete.py`
-- **Réseau nommé** : `healthcare_network`, permet aux deux services de communiquer via leur nom de service (`mongodb://mongodb:27017/`)
-- **Volumes** :
-  - `mongo_data` (volume Docker géré) : persistance des données MongoDB entre les redémarrages
-  - Bind mount du CSV : `./healthcare_dataset.csv:/app/healthcare_dataset.csv`
+### Architecture
+- **Service `mongodb`** : image officielle `mongo:8.3.7`, données dans le volume `mongo_data`
+- **Service `app`** : construit depuis le `Dockerfile` (Python 3.12-slim), lance `orchestration_migration_complete.py`
+- **Réseau** : `healthcare_network`, les deux services communiquent via `mongodb://mongodb:27017/`
+- **Volumes** : `mongo_data` pour la persistance MongoDB, bind mount pour le CSV
 
-Le pipeline est **idempotent** : chaque script de migration vide la collection (`delete_many({})`) avant réinsertion, donc relancer `docker-compose up` autant de fois que voulu ne crée jamais de doublons.
+Le pipeline est idempotent : la collection est vidée avant réinsertion (`delete_many({})`), et les index sont supprimés puis recréés à chaque exécution (`drop_indexes()`). On peut relancer `docker-compose up` autant de fois que voulu, le résultat final est toujours le même.
 
-### Arrêter et nettoyer
+### Arrêter
 ```bash
 docker-compose down
 ```
 
 ---
 
-## Exécution manuelle (alternative, sans Docker)
+## Exécution manuelle (sans Docker)
 
-### 1. Installation des dépendances (macOS)
+### Installation (macOS)
 ```bash
-# Créer un environnement virtuel
 python3 -m venv venv
-
-# Activer l'environnement
 source venv/bin/activate
-
-# Installer les dépendances
 pip install -r requirements.txt
 ```
 
-### 2. Lancer MongoDB
+### Lancer MongoDB
 ```bash
-# Sur macOS avec Homebrew
 brew services start mongodb-community
-
-# Vérifier que MongoDB tourne
-mongosh
-# Puis taper : exit
 ```
 
-### 3. Exécuter la migration complète, étape par étape
+### Étapes, dans l'ordre
 
-#### Étape 1 : Nettoyer les données
 ```bash
-python 1.clean_data.py
+python 1.clean_data.py       # nettoie et sauvegarde healthcare_dataset_cleaned.csv
+python 2.migration_mongodb.py  # migre les 54 966 patients vers MongoDB
+python 3.test_migration.py     # 8 tests de validation post-migration
+python 4.test_crud.py          # démo Create/Read/Update/Delete
+python 5.generer_index.py      # supprime les anciens index puis recrée les 5 actuels
 ```
-- Supprime 534 doublons
-- Normalise la casse des noms
-- Convertit les dates en format datetime
-- Génère `healthcare_dataset_cleaned.csv`
 
-#### Étape 2 : Migrer vers MongoDB
+Ou tout d'un coup avec l'orchestrateur :
 ```bash
-python 2.migration_mongodb.py
+python orchestration_migration_complete.py
 ```
-Insère 54 966 patients nettoyés dans MongoDB.
-
-#### Étape 3 : Valider la migration
-```bash
-python 3.test_migration.py
-```
-Vérifie que toutes les données sont bien en base.
-
-#### Étape 4 : Tester les opérations CRUD
-```bash
-python 4.test_crud.py
-```
-Démontre Create, Read, Update, Delete sur les patients.
-
-#### Étape 5 : Créer les index
-```bash
-python 5.generer_index.py
-```
-Optimise les performances pour les requêtes fréquentes.
 
 ---
 
-## Processus de Nettoyage des Données
-
-### Problèmes Identifiés
+## Nettoyage des données
 
 | Problème | Nombre | Solution |
 |----------|--------|----------|
-| Doublons exacts | 534 | Suppression (keep='first') |
-| Casse incohérente (Name) | 55 500 | Normalisation en Title Case |
-| Dates en texte | 2 colonnes | Conversion en datetime64 |
-| Valeurs manquantes | 0 | Aucune action nécessaire |
+| Doublons exacts | 534 | `drop_duplicates(keep='first')` |
+| Casse incohérente (Name) | 55 500 | `.str.title()` |
+| Dates stockées en texte | 2 colonnes | `pd.to_datetime()` |
+| Valeurs manquantes | 0 | aucune action |
 
-### Résultat du Nettoyage
-```
-AVANT  : 55 500 lignes
-APRÈS  : 54 966 lignes (-534 doublons)
-```
+AVANT : 55 500 lignes
+APRÈS : 54 966 lignes (-534 doublons)
+
+Point d'attention : la conversion des dates avec `pd.to_datetime()` doit être refaite dans `2.migration_mongodb.py` juste avant l'insertion, même si elle a déjà été faite dans `1.clean_data.py`, en effet, le passage par le CSV intermédiaire (`to_csv` puis `read_csv`) fait perdre le typage `datetime` et repasse tout en texte. Sans ça, `Date of Admission` et `Discharge Date` se retrouvent en `string` dans MongoDB au lieu de `Date`.
 
 ---
 
 ## Structure MongoDB
 
-### Base de Données
-- **Nom** : `healthcare_db`
-- **Type** : Base de données NoSQL flexible
+- **Base** : `healthcare_db`
+- **Collection** : `patients` (54 966 documents)
 
-### Collection
-- **Nom** : `patients`
-- **Type** : Collection de documents JSON-like
-- **Nombre de documents** : 54 966
+Chaque patient est stocké dans un document unique (pas de collections séparées) :
 
-### Document Exemple
 ```json
 {
   "_id": ObjectId("..."),
@@ -179,100 +134,74 @@ APRÈS  : 54 966 lignes (-534 doublons)
   "Gender": "Male",
   "Blood Type": "B-",
   "Medical Condition": "Cancer",
-  "Date of Admission": "2024-01-31",
+  "Date of Admission": ISODate("2024-01-31"),
   "Doctor": "Matthew Smith",
   "Hospital": "Sons and Miller",
   "Insurance Provider": "Blue Cross",
   "Billing Amount": 18856.28,
   "Room Number": 328,
   "Admission Type": "Urgent",
-  "Discharge Date": "2024-02-02",
+  "Discharge Date": ISODate("2024-02-02"),
   "Medication": "Paracetamol",
   "Test Results": "Normal"
 }
 ```
 
----
-
-## 🛠️ Outils et Technologies Utilisés
-
-### Python
-- **Pandas** : Manipulation et nettoyage des données CSV
-- **PyMongo** : Librairie Driver MongoDB pour Python
-- **Python-dotenv** : Gestion des variables d'environnement
-
-### Base de Données
-- **MongoDB** : Base de données NoSQL orientée documents
-  - Version locale : 8.3.4
-  - Version conteneurisée (Docker) : 8.3.7 (même branche mineure)
-- **mongosh** : Shell interactif pour MongoDB
-
-### Conteneurisation
-- **Docker** : conteneurisation de l'application Python (image `python:3.12-slim`)
-- **Docker Compose** : orchestration des services `app` + `mongodb`, volumes, réseau
-
-### Concepts Clés
-
-#### NoSQL vs SQL
-MongoDB offre une **flexibilité supérieure** à SQL :
-- Schéma adaptif (pas de migration nécessaire)
-- Champs avec espaces autorisés
-- Scalabilité horizontale (sharding)
-- Performance pour les lectures massives
-
-#### PyMongo
-Traducteur entre Python et MongoDB :
-- Connexion à la base
-- Opérations CRUD
-- Gestion des erreurs
-- Création d'index
+Un schéma détaillé (types de champs, index) est disponible dans le dossier du projet.
 
 ---
 
-## Points de Vigilance
+## Index
 
-### Typage des Champs
-- Age, Room Number : entiers (int)
-- Billing Amount : décimaux (float)
-- Dates : datetime64 (pour les opérations temporelles)
-- Textes : chaînes de caractères (str)
+5 index actuellement, choisis en fonction des recherches probables dans un contexte hospitalier (recherche par pathologie, par médecin, par hôpital, par date d'admission), aucune spécification précise dans les consignes sur ce point, donc c'est une hypothèse, pas une donnée figée :
 
-### Index
-Les index améliorent les performances des requêtes fréquentes :
-- Index sur `Name` : recherches par nom patient
-- Index sur `Date of Admission` : filtrage par date
-- Index composé `Hospital + Medical Condition` : requêtes combinées
+- `Name` : recherche par nom de patient
+- `Medical Condition` + `Medication` (composé) : recherche par pathologie, éventuellement combinée au médicament
+- `Date of Admission` : filtrage par date
+- `Hospital` : recherche par hôpital
+- `Doctor` : recherche par médecin
 
-### Idempotence de la migration
-Le script `2.migration_mongodb.py` vide systématiquement la collection (`delete_many({})`) avant réinsertion, afin d'éviter la création de doublons en cas de ré-exécution (manuelle ou via `docker-compose up`).
+Pour l'index composé, l'ordre des champs compte : `Medical Condition` en premier permet d'optimiser aussi bien les requêtes sur la pathologie seule que sur pathologie + médicament ensemble.
 
-### Ressources
-- Fermeture correcte des connexions MongoDB
-- Gestion des erreurs (DuplicateKeyError, etc.)
-- Libération de la mémoire après chaque opération
+`5.generer_index.py` supprime systématiquement tous les index existants (sauf `_id_`) avant d'en recréer 5, pour que le script reste idempotent et qu'on ne se retrouve pas avec des index résiduels d'anciennes versions.
 
 ---
 
-## Sécurité et Authentification
+## Outils et versions
 
-**À noter** : MongoDB fonctionne actuellement **sans authentification** (mode développement).
+- **Python** : 3.14.2 (local) / 3.12-slim (Docker)
+- **Pandas** : 2.2.0
+- **PyMongo** : 4.6.3
+- **python-dotenv** : 1.2.2
+- **MongoDB** : 8.3.4 (local) / 8.3.7 (Docker)
 
-Pour la production, il faudrait :
-- Créer des utilisateurs avec rôles
-- Activer l'authentification
-- Configurer les permissions par rôle
+Les versions de PyMongo et python-dotenv ont été mises à jour suite à deux alertes de sécurité Dependabot.
 
 ---
 
-## Prochaines Étapes
+## Typage des champs
 
-- **Phase 3** : Déploiement sur AWS
-  - Amazon DocumentDB (MongoDB compatible)
-  - Amazon ECS (Elastic Container Service)
-  - Amazon RDS (Relational Database Service)
+- `Age`, `Room Number` : int
+- `Billing Amount` : double
+- `Date of Admission`, `Discharge Date` : Date (vérifié avec `typeof` en mongosh)
+- Le reste : string
+
+---
+
+## Sécurité et authentification
+
+MongoDB tourne actuellement **sans authentification** (mode dev). À prévoir : création d'utilisateurs et de rôles, activation de l'authentification.
+
+---
+
+## Prochaines étapes
+
+- Authentification MongoDB (utilisateurs, rôles)
+- Recherches AWS (DocumentDB, RDS, ECS)
+- Présentation de soutenance
 
 ---
 
 ## Auteur
 
-Manon Lemaitre - Data Engineer en formation
+Manon Lemaitre — Data Engineer en formation
