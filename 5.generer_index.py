@@ -34,11 +34,11 @@ def create_indexes():
         print(f"    Index créé : {index_name}")
         print(f"   Utilité : Accélère les recherches par nom patient")
         
-        # INDEX 2 : Index sur Age (filtrage par âge)
-        print("\n2  Index sur 'Age' (recherche par âge)")
-        index_age = collection.create_index([("Age", ASCENDING)])
-        print(f"    Index créé : {index_age}")
-        print(f"   Utilité : Accélère les filtres par âge")
+        # INDEX 2 : Index conjugué sur la pathologie et sur le médicament 
+        print("\n2  Index conjugué sur Pathologie et Médicament")
+        index_patho_medic = collection.create_index([("Medical Condition", ASCENDING), ("Medication", ASCENDING)])
+        print(f"    Index créé : {index_patho_medic}")
+        print(f"   Utilité : Accélère les recherches par pathologie et médicament")
         
         # INDEX 3 : Index sur Date of Admission (filtrage par date d'admission)
         print("\n3  Index sur 'Date of Admission' (recherche par date)")
@@ -46,36 +46,17 @@ def create_indexes():
         print(f"    Index créé : {index_admission}")
         print(f"   Utilité : Accélère les filtres par date d'admission")
         
-        # INDEX 4 : Index sur Medical Condition (regroupement par condition)
-        print("\n4  Index sur 'Medical Condition' (recherche par condition)")
-        index_condition = collection.create_index([("Medical Condition", ASCENDING)])
-        print(f"    Index créé : {index_condition}")
-        print(f"   Utilité : Accélère les recherches/agrégations par condition médicale")
-        
-        # INDEX 5 : Index sur Hospital (recherche par hôpital)
-        print("\n5 Index sur 'Hospital' (recherche par hôpital)")
+        # INDEX 4 : Index sur Hospital (recherche par hôpital)
+        print("\n4 Index sur 'Hospital' (recherche par hôpital)")
         index_hospital = collection.create_index([("Hospital", ASCENDING)])
         print(f"    Index créé : {index_hospital}")
         print(f"   Utilité : Accélère les recherches par hôpital")
     
-        
-        # INDEX 6 : Index sur Billing Amount (tri par montant)
-        print("\n6  Index sur 'Billing Amount' (tri par montant)")
-        index_billing = collection.create_index([("Billing Amount", DESCENDING)])
-        print(f"   Index créé : {index_billing}")
-        print(f"   Utilité : Accélère le tri par montant de facturation")
-        
-        # INDEX 7 : Index sur Insurance Provider
-        print("\n7 Index sur 'Insurance Provider' (recherche par assureur)")
-        index_insurance = collection.create_index([("Insurance Provider", ASCENDING)])
-        print(f"    Index créé : {index_insurance}")
-        print(f"   Utilité : Accélère les recherches par fournisseur d'assurance")
-        
-        # INDEX 8 : Index sur Admission Type
-        print("\n8  Index sur 'Admission Type' (recherche par type d'admission)")
-        index_admission_type = collection.create_index([("Admission Type", ASCENDING)])
-        print(f"    Index créé : {index_admission_type}")
-        print(f"   Utilité : Accélère les filtres par type d'admission")
+        ## INDEX 5 : Index sur Docteur (recherche par docteur)
+        print("\n5 Index sur 'Doctor' (recherche par docteur)")
+        index_doctor = collection.create_index([("Doctor", ASCENDING)])
+        print(f"    Index créé : {index_doctor}")
+        print(f"   Utilité : Accélère les recherches par docteur")
 
         
         print("\n" + "=" * 70)
