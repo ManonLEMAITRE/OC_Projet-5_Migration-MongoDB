@@ -190,13 +190,34 @@ Les versions de PyMongo et python-dotenv ont été mises à jour suite à deux a
 
 ## Sécurité et authentification
 
-MongoDB tourne actuellement **sans authentification** (mode dev). À prévoir : création d'utilisateurs et de rôles, activation de l'authentification.
+### Utilisateurs et rôles
+
+3 utilisateurs ont été créés, avec des rôles différenciés selon les profils métier identifiés dans le projet :
+
+| Utilisateur | Rôle | Justification |
+|---|---|---|
+| `admin_si` | `userAdmin` + `dbAdmin` + `readWrite` | Le SI a besoin de tout gérer : données, index, autres utilisateurs |
+| `medecin_user` | `readWrite` | Le personnel soignant lit et modifie les fiches patients |
+| `secretariat_user` | `read` | Le secrétariat consulte les informations sans les modifier |
+
+Ces utilisateurs sont créés directement dans `healthcare_db`.
+
+### Activation de l'authentification
+
+L'authentification est activée sur le conteneur MongoDB via l'option `--auth` (dans `docker-compose.yml`, sur le service `mongodb`). Les identifiants utilisés par le pipeline (`orchestration_migration_complete.py`) sont ceux de `admin_si` (seul profil avec assez de droits pour migrer, tester et gérer les index), stockés dans un fichier `.env` non commité (jamais en clair dans le code ou dans `docker-compose.yml`).
+
+### Hachage des mots de passe
+
+MongoDB ne stocke jamais les mots de passe en clair : il applique automatiquement un hachage (algorithme SCRAM, basé sur SHA), avec un salage pour que deux mots de passe identiques ne produisent jamais le même résultat stocké. Ce hachage est **irréversible** (contrairement à un chiffrement, qui utilise une clé et peut être inversé) : même en cas de vol de la base, personne ne peut retrouver le mot de passe d'origine à partir de ce qui est stocké. On ne peut que **vérifier** si un mot de passe fourni correspond, pas le "récupérer".
+
+### Limites connues
+
+- MongoDB ne permet pas nativement de restreindre un utilisateur à **certaines données seulement** (par exemple, un médecin qui ne verrait que ses propres patients, ou une secrétaire limitée à certains champs). Ce filtrage nécessiterait soit une logique applicative en plus, soit des vues MongoDB dédiées — non implémenté ici, pour rester sur un périmètre réaliste pour ce projet.
+- Les mots de passe utilisés sont volontairement simples (contexte d'exercice). En production, il faudrait des mots de passe forts, générés et stockés via un gestionnaire de secrets plutôt qu'en `.env`.
 
 ---
 
 ## Prochaines étapes
-
-- Authentification MongoDB (utilisateurs, rôles)
 - Recherches AWS (DocumentDB, RDS, ECS)
 - Présentation de soutenance
 
