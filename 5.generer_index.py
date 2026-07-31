@@ -3,10 +3,16 @@ from db_utils import connecter_mongodb
 
 
 def lister_index_existants(collection):
-    """Affiche les index déjà présents sur la collection."""
+    """Affiche les index actuellement présents sur la collection."""
     print("\n Index existants avant création :")
     for index in collection.list_indexes():
         print(f"   - {index['name']}")
+
+
+def supprimer_index_existants(collection):
+    """Supprime tous les index existants (sauf _id_), pour repartir sur une base propre."""
+    collection.drop_indexes()
+    print("\n Anciens index supprimés (hors _id_)")
 
 
 def create_indexes(collection):
@@ -30,6 +36,7 @@ def create_indexes(collection):
 
     try:
         lister_index_existants(collection)
+        supprimer_index_existants(collection)
 
         print("\n" + "=" * 70)
         print(" Création des nouveaux index")
