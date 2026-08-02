@@ -217,12 +217,6 @@ MongoDB ne stocke jamais les mots de passe en clair : il applique automatiquemen
 
 ---
 
-## Prochaines étapes
-- Recherches AWS (DocumentDB, RDS, ECS)
-- Présentation de soutenance
-
----
-
 ## Auteur
 
 Manon Lemaitre — Data Engineer en formation
