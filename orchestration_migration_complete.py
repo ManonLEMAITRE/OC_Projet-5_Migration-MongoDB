@@ -1,6 +1,7 @@
 import subprocess 
 
 scripts = [
+    ["python", "0.creation_utilisateurs.py"],
     ["python", "1.clean_data.py"],
     ["python", "2.migration_mongodb.py"],
     ["python", "3.test_migration.py"],

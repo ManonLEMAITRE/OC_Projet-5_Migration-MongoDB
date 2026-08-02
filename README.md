@@ -25,8 +25,9 @@ Projet 5 - Migration MongoDB/
 ├── Dockerfile
 ├── docker-compose.yml
 ├── .dockerignore
-├── orchestration_migration_complete.py # Enchaîne les 5 scripts via subprocess
+├── orchestration_migration_complete.py # Enchaîne les 6 scripts via subprocess
 ├── db_utils.py # Connexion MongoDB centralisée (client + collection)
+├── 0.creation_utilisateurs.py # Création automatique de medecin_user et secretariat_user
 ├── 1.clean_data.py # Nettoyage des données
 ├── 2.migration_mongodb.py # Migration vers MongoDB
 ├── 3.test_migration.py # Validation post-migration
@@ -37,10 +38,30 @@ Tous les scripts sont découpés en fonctions (chargement, nettoyage, insertion,
 
 ---
 
+## Configuration requise avant de lancer le projet
+
+⚠️ **Étape indispensable, à faire avant `docker-compose up`.** Le projet utilise l'authentification MongoDB (voir section "Sécurité et authentification"), ce qui nécessite un fichier `.env` à la racine du projet — non fourni dans le dépôt Git pour des raisons de sécurité.
+
+Créer un fichier `.env` à la racine du projet avec le contenu suivant :
+
+```
+MONGO_ROOT_USER=
+MONGO_ROOT_PASSWORD=
+```
+
+- `MONGO_ROOT_USER` / `MONGO_ROOT_PASSWORD` : identifiants du compte `admin_si`, créé **automatiquement** par l'image officielle MongoDB au premier démarrage (mécanisme natif `MONGO_INITDB_ROOT_USERNAME`/`MONGO_INITDB_ROOT_PASSWORD`, alimenté par ces deux variables dans `docker-compose.yml`). Ce compte est ensuite utilisé par le pipeline pour la migration, les tests, la gestion des index, et la création des deux autres utilisateurs. Voir la section "Sécurité et authentification" pour le détail des rôles.
+
+Sans ce fichier, `docker-compose up` échouera au démarrage du service `mongodb` (variables d'environnement manquantes) ou l'authentification échouera lors de la connexion du service `app`.
+
+⚠️ Ce fichier `.env` n'a d'effet que si le volume `mongo_data` est **vide** (premier démarrage). Si vous relancez le projet après un `docker-compose down` (sans `-v`), les identifiants existants dans le volume restent ceux d'origine, peu importe ce qui est dans `.env`.
+
+---
+
 ## Exécution via Docker (recommandé)
 
 ### Prérequis
 - Docker Desktop installé et lancé
+- Fichier `.env` créé (voir section précédente)
 
 ### Lancer le projet
 ```bash
@@ -89,6 +110,7 @@ brew services start mongodb-community
 ### Étapes, dans l'ordre
 
 ```bash
+python 0.creation_utilisateurs.py # crée medecin_user et secretariat_user
 python 1.clean_data.py       # nettoie et sauvegarde healthcare_dataset_cleaned.csv
 python 2.migration_mongodb.py  # migre les 54 966 patients vers MongoDB
 python 3.test_migration.py     # 8 tests de validation post-migration
@@ -192,19 +214,21 @@ Les versions de PyMongo et python-dotenv ont été mises à jour suite à deux a
 
 ### Utilisateurs et rôles
 
-3 utilisateurs ont été créés, avec des rôles différenciés selon les profils métier identifiés dans le projet :
+3 utilisateurs sont utilisés, avec des rôles différenciés selon les profils métier identifiés dans le projet :
 
-| Utilisateur | Rôle | Justification |
-|---|---|---|
-| `admin_si` | `userAdmin` + `dbAdmin` + `readWrite` | Le SI a besoin de tout gérer : données, index, autres utilisateurs |
-| `medecin_user` | `readWrite` | Le personnel soignant lit et modifie les fiches patients |
-| `secretariat_user` | `read` | Le secrétariat consulte les informations sans les modifier |
+| Utilisateur | Rôle | Justification | Création |
+|---|---|---|---|
+| `admin_si` | root (accès complet au serveur) | Compte technique d'administration, utilisé par le pipeline pour migrer les données et gérer les index | Automatique, par l'image Docker officielle de MongoDB (`MONGO_INITDB_ROOT_USERNAME`/`MONGO_INITDB_ROOT_PASSWORD`) |
+| `medecin_user` | `readWrite` sur `healthcare_db` | Le personnel soignant lit et modifie les fiches patients | Automatique, via `0.creation_utilisateurs.py` |
+| `secretariat_user` | `read` sur `healthcare_db` | Le secrétariat consulte les informations sans les modifier | Automatique, via `0.creation_utilisateurs.py` |
 
-Ces utilisateurs sont créés directement dans `healthcare_db`.
+**Note** : pour simplifier le projet, `admin_si` est ici un compte root global (créé nativement par Docker), plutôt qu'un rôle scopé uniquement sur `healthcare_db`. Dans un contexte réel, ce rôle serait restreint plus finement (`userAdmin` + `dbAdmin` + `readWrite` sur `healthcare_db` uniquement).
 
 ### Activation de l'authentification
 
-L'authentification est activée sur le conteneur MongoDB via l'option `--auth` (dans `docker-compose.yml`, sur le service `mongodb`). Les identifiants utilisés par le pipeline (`orchestration_migration_complete.py`) sont ceux de `admin_si` (seul profil avec assez de droits pour migrer, tester et gérer les index), stockés dans un fichier `.env` non commité (jamais en clair dans le code ou dans `docker-compose.yml`).
+L'authentification est activée sur le conteneur MongoDB via l'option `--auth` (dans `docker-compose.yml`, sur le service `mongodb`). Le compte `admin_si` est créé automatiquement par l'image officielle de MongoDB au tout premier démarrage (volume vide), à partir des variables `MONGO_ROOT_USER`/`MONGO_ROOT_PASSWORD` définies dans le `.env` (voir section "Configuration requise avant de lancer le projet").
+
+`medecin_user` et `secretariat_user` sont ensuite créés automatiquement par le script `0.creation_utilisateurs.py`, première étape exécutée par `orchestration_migration_complete.py`. Ce script se connecte avec `admin_si` et crée les deux utilisateurs **s'ils n'existent pas déjà** (idempotent — pas de doublon en cas de relance).
 
 ### Hachage des mots de passe
 
@@ -212,7 +236,7 @@ MongoDB ne stocke jamais les mots de passe en clair : il applique automatiquemen
 
 ### Limites connues
 
-- MongoDB ne permet pas nativement de restreindre un utilisateur à **certaines données seulement** (par exemple, un médecin qui ne verrait que ses propres patients, ou une secrétaire limitée à certains champs). Ce filtrage nécessiterait soit une logique applicative en plus, soit des vues MongoDB dédiées — non implémenté ici, pour rester sur un périmètre réaliste pour ce projet.
+- MongoDB ne permet pas nativement de restreindre un utilisateur à **certaines données seulement** (par exemple, un médecin qui ne verrait que ses propres patients, ou une secrétaire limitée à certains champs). Ce filtrage nécessiterait soit une logique applicative en plus, soit des vues MongoDB dédiées, non implémenté ici, pour rester sur un périmètre réaliste pour ce projet.
 - Les mots de passe utilisés sont volontairement simples (contexte d'exercice). En production, il faudrait des mots de passe forts, générés et stockés via un gestionnaire de secrets plutôt qu'en `.env`.
 
 ---

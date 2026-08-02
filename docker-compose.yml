@@ -3,17 +3,21 @@ services:
     image: mongo:8.3.7
     container_name: mongodb
     command: ["mongod", "--auth"]
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=${MONGO_ROOT_USER}
+      - MONGO_INITDB_ROOT_PASSWORD=${MONGO_ROOT_PASSWORD}
     volumes:
       - mongo_data:/data/db
     networks:
       - healthcare_network
+
   app:
     build: .
     container_name: script_migration
     depends_on:
       - mongodb
     environment:
-      - MONGO_URI=mongodb://${MONGO_ROOT_USER}:${MONGO_ROOT_PASSWORD}@mongodb:27017/healthcare_db
+      - MONGO_URI=mongodb://${MONGO_ROOT_USER}:${MONGO_ROOT_PASSWORD}@mongodb:27017/healthcare_db?authSource=admin
     volumes:
       - ./healthcare_dataset.csv:/app/healthcare_dataset.csv
     networks:
