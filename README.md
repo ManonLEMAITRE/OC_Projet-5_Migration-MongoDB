@@ -18,21 +18,21 @@ Dans le cadre de ce projet de migartion de DataSoluTech, on m'a confié un datas
 
 ## Structure du projet
 Projet 5 - Migration MongoDB/
-├── requirements.txt # Dépendances Python
-├── README.md
-├── healthcare_dataset.csv # Données brutes
-├── healthcare_dataset_cleaned.csv # Données nettoyées
-├── Dockerfile
-├── docker-compose.yml
-├── .dockerignore
-├── orchestration_migration_complete.py # Enchaîne les 6 scripts via subprocess
-├── db_utils.py # Connexion MongoDB centralisée (client + collection)
-├── 0.creation_utilisateurs.py # Création automatique de medecin_user et secretariat_user
-├── 1.clean_data.py # Nettoyage des données
-├── 2.migration_mongodb.py # Migration vers MongoDB
-├── 3.test_migration.py # Validation post-migration
-├── 4.test_crud.py # Démonstration CRUD
-└── 5.generer_index.py # Création des index
+├── requirements.txt # Dépendances Python  
+├── README.md  
+├── healthcare_dataset.csv # Données brutes  
+├── healthcare_dataset_cleaned.csv # Données nettoyées  
+├── Dockerfile  
+├── docker-compose.yml  
+├── .dockerignore  
+├── orchestration_migration_complete.py # Enchaîne les 6 scripts via subprocess  
+├── db_utils.py # Connexion MongoDB centralisée (client + collection)  
+├── 0.creation_utilisateurs.py # Création automatique de medecin_user et secretariat_user  
+├── 1.clean_data.py # Nettoyage des données  
+├── 2.migration_mongodb.py # Migration vers MongoDB  
+├── 3.test_migration.py # Validation post-migration  
+├── 4.test_crud.py # Démonstration CRUD  
+└── 5.generer_index.py # Création des index  
 
 Tous les scripts sont découpés en fonctions (chargement, nettoyage, insertion, tests unitaires, etc.), avec un point d'entrée `if __name__ == "__main__":` à la fin de chaque fichier. La connexion à MongoDB (client + accès à la collection `patients`) est centralisée dans `db_utils.py` et importée partout où elle est nécessaire, plutôt que dupliquée dans chaque script.
 
