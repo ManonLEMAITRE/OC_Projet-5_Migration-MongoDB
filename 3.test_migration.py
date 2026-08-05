@@ -3,7 +3,7 @@ from db_utils import connecter_mongodb
 
 
 def test_nombre_documents(collection):
-    """Vérifie le nombre total de documents insérés dans MongoDB."""
+    """Vérifie le nombre total de documents insérés dans MongoDB. Dans le cadre de ce projet, on attend 54 966 documents insérées."""
     print("\n✓ Test : Nombre de documents")
     count = collection.count_documents({})
     expected_count = 54966
@@ -16,15 +16,23 @@ def test_nombre_documents(collection):
     return count
 
 
-def test_documents_non_vides(collection, count):
-    """Vérifie qu'il n'y a pas de documents vides."""
-    print("\n✓ Test : Documents non vides")
-    empty_docs = collection.count_documents({})
+def test_documents_name_non_vides(collection, count):
+    """Vérifie qu'il n'y a pas de documents avec le champ Name vide ou absent."""
+    print("\n✓ Test : Documents avec Name non vides")
+    empty_docs = collection.count_documents({
+        "$or": [
+            {"Name": None},
+            {"Name": ""},
+            {"Name": {"$exists": False}}
+        ]
+    })
 
-    if empty_docs == count:
-        print(f"  ✅ Reussi : Tous les {count} documents contiennent des données")
+    if empty_docs == 0:
+        print(f"  ✅ Reussi : Tous les {count} documents ont un champ Name renseigné")
     else:
-        print(f"  ❌ Echec : Documents vides trouvés")
+        print(f"  ❌ Echec : {empty_docs} document(s) avec Name vide ou absent")
+
+    return empty_docs
 
 
 def test_champs_obligatoires(collection):
@@ -48,24 +56,31 @@ def test_champs_obligatoires(collection):
     return required_fields
 
 
-def test_types_numeriques(collection):
-    """TEST : Vérifie les types des champs numériques."""
-    print("\n✓ Test : Types de champs numériques")
-    age_sample = collection.find_one({'Age': {'$type': 'int'}})
-    billing_sample = collection.find_one({'Billing Amount': {'$type': 'double'}})
+def test_types_numeriques(collection, count):
+    """Vérifie que TOUS les documents ont les bons types sur les champs numériques et dates."""
+    print("\n✓ Test : Types de champs numériques et dates")
 
-    type_checks = []
-    if age_sample:
-        type_checks.append(("Age (int)", True))
-    if billing_sample:
-        type_checks.append(("Billing Amount (double)", True))
+    age_ok = collection.count_documents({'Age': {'$type': 'int'}})
+    billing_ok = collection.count_documents({'Billing Amount': {'$type': 'double'}})
+    admission_date_ok = collection.count_documents({'Date of Admission': {'$type': 'date'}})
+    discharge_date_ok = collection.count_documents({'Discharge Date': {'$type': 'date'}})
 
-    if type_checks:
-        print(f"  ✅ Reussi : Les types numériques sont corrects")
-        for field_name, _ in type_checks:
-            print(f"    - {field_name}")
+    all_ok = (
+        age_ok == count
+        and billing_ok == count
+        and admission_date_ok == count
+        and discharge_date_ok == count
+    )
+
+    if all_ok:
+        print(f"  ✅ Reussi : Les {count} documents ont les bons types")
     else:
-        print(f"  ⚠️  WARNING : Impossible de valider les types")
+        print(f"  ❌ Echec : Types incorrects détectés")
+
+    print(f"    - Age (int) : {age_ok}/{count}")
+    print(f"    - Billing Amount (double) : {billing_ok}/{count}")
+    print(f"    - Date of Admission (date) : {admission_date_ok}/{count}")
+    print(f"    - Discharge Date (date) : {discharge_date_ok}/{count}")
 
 
 def test_pas_de_doublon(collection):
@@ -138,15 +153,12 @@ def afficher_resume(count, required_fields, unique_ids, null_count):
 
 
 def test_migration(collection):
-    """
-    Exécute l'ensemble des tests de validation post-migration.
-    """
     print("TESTS DE VALIDATION POST-MIGRATION")
     try:
         count = test_nombre_documents(collection)
         test_documents_non_vides(collection, count)
         required_fields = test_champs_obligatoires(collection)
-        test_types_numeriques(collection)
+        test_types_numeriques(collection, count)  # <- count ajouté ici
         unique_ids = test_pas_de_doublon(collection)
         null_count = test_valeurs_nulles(collection, required_fields)
         test_integrite_echantillon(collection)
