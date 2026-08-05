@@ -17,7 +17,7 @@ Dans le cadre de ce projet de migartion de DataSoluTech, on m'a confié un datas
 ---
 
 ## Structure du projet
-Projet 5 - Migration MongoDB/
+Projet 5 - Migration MongoDB/  
 ├── requirements.txt # Dépendances Python  
 ├── README.md  
 ├── healthcare_dataset.csv # Données brutes  
