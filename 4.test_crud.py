@@ -37,7 +37,7 @@ def creer_patient(collection):
 
 
 def lire_patients(collection, patient_id):
-    """READ : Effectue plusieurs lectures (par ID, par filtre, tri) et retourne le patient créé."""
+    """READ : Effectue plusieurs lectures (par ID, par filtre) et retourne le patient créé."""
     print("\n" + "=" * 70)
     print("2 READ - Lire des documents")
     print("=" * 70)
@@ -61,36 +61,10 @@ def lire_patients(collection, patient_id):
     if first_cancer:
         print(f"      Exemple : {first_cancer[0]['Name']} ({first_cancer[0]['Age']} ans)")
 
-    # READ 3 : Trouver avec un filtre complexe
-    print("\n 3 : Patients avec Age > 60 ET Insurance = Medicare")
-    elderly_medicare = list(collection.find({
-        "Age": {"$gt": 60},
-        "Insurance Provider": "Medicare"
-    }).limit(5))
-
-    elderly_count = collection.count_documents({
-        "Age": {"$gt": 60},
-        "Insurance Provider": "Medicare"
-    })
-
-    print(f"    {elderly_count} patients correspondent à ces critères")
-    if elderly_medicare:
-        for p in elderly_medicare[:2]:
-            print(f"      - {p['Name']} ({p['Age']} ans)")
-
-    # READ 4 : Lire avec tri et limite
-    print("\n 4 : Top 3 patients avec montant de facturation le plus élevé")
-    top_billing = list(collection.find().sort("Billing Amount", -1).limit(3))
-
-    print(f"     Top 3 patients :")
-    for i, p in enumerate(top_billing, 1):
-        print(f"      {i}. {p['Name']} : {p['Billing Amount']:.2f}€")
-
-    return patient
 
 
 def modifier_patient(collection, patient_id, patient):
-    """UPDATE : Modifie la chambre, la facturation, puis un groupe de patients."""
+    """UPDATE : Modifie la chambre, la facturation."""
     print("\n" + "=" * 70)
     print("3  UPDATE - Modifier un document")
     print("=" * 70)
@@ -113,67 +87,20 @@ def modifier_patient(collection, patient_id, patient):
     print(f"   Après : {updated_patient['Billing Amount']:.2f}€")
     print(f"    Mise à jour effectuée")
 
-    # UPDATE 3 : Modifier PLUSIEURS documents
-    print(f"\n  Modification 3 : Mettre à jour le médecin de tous les patients Hypertension")
-    result = collection.update_many(
-        {"Medical Condition": "Hypertension"},
-        {"$set": {"Doctor": "Dr. Cardiologie Générale"}}
-    )
-    print(f"    {result.modified_count} document(s) modifié(s)")
-
 
 def supprimer_patient(collection, patient_id):
-    """DELETE : Supprime le patient créé, et illustre une suppression par critère (sans l'exécuter)."""
+    """DELETE : Supprime le patient créé."""
     print("\n" + "=" * 70)
     print("4  DELETE - Supprimer un document")
     print("=" * 70)
 
-    # DELETE 1 : Supprimer UN document
-    print(f"\n  Suppression 1 : Supprimer le patient créé (Jean Dupont)")
+    print(f"\n  Supprimer le patient créé (Jean Dupont)")
     print(f"   Avant : {collection.count_documents({})} patients au total")
 
     result = collection.delete_one({"_id": patient_id})
 
     print(f"    {result.deleted_count} patient supprimé")
     print(f"   Après : {collection.count_documents({})} patients au total")
-
-    # DELETE 2 : Information (sans vraiment supprimer)
-    print(f"\n  Suppression 2 : Exemple de suppression par critère")
-    print(f"   Si on voulait supprimer tous les patients avec Age < 18 :")
-    count_minors = collection.count_documents({"Age": {"$lt": 18}})
-    print(f"     {count_minors} patient(s) correspondrait/correspondraient")
-    print(f"   (  Non supprimé pour préserver les données)")
-
-
-def afficher_statistiques(collection):
-    """Affiche des statistiques globales (âge moyen, facturation moyenne, top conditions)."""
-    print("\n" + "=" * 70)
-    print("STATISTIQUES FINALES")
-    print("=" * 70)
-
-    total_patients = collection.count_documents({})
-
-    pipeline_age = [{"$group": {"_id": None, "age_moyen": {"$avg": "$Age"}}}]
-    avg_age = list(collection.aggregate(pipeline_age))
-
-    pipeline_billing = [{"$group": {"_id": None, "facturation_moyenne": {"$avg": "$Billing Amount"}}}]
-    avg_billing = list(collection.aggregate(pipeline_billing))
-
-    print(f"\n Données globales :")
-    print(f"   Total de patients : {total_patients}")
-    print(f"   Âge moyen : {avg_age[0]['age_moyen']:.1f} ans")
-    print(f"   Montant moyen de facturation : {avg_billing[0]['facturation_moyenne']:.2f}€")
-
-    print(f"\n   Top 5 conditions médicales :")
-    pipeline_conditions = [
-        {"$group": {"_id": "$Medical Condition", "count": {"$sum": 1}}},
-        {"$sort": {"count": -1}},
-        {"$limit": 5}
-    ]
-    conditions = list(collection.aggregate(pipeline_conditions))
-
-    for i, condition in enumerate(conditions, 1):
-        print(f"      {i}. {condition['_id']} : {condition['count']} patients")
 
 
 def crud_operations(collection):
@@ -190,7 +117,6 @@ def crud_operations(collection):
         patient = lire_patients(collection, patient_id)
         modifier_patient(collection, patient_id, patient)
         supprimer_patient(collection, patient_id)
-        afficher_statistiques(collection)
 
         print("\n" + "=" * 70)
         print(" OPÉRATIONS CRUD COMPLÉTÉES AVEC SUCCÈS !")
