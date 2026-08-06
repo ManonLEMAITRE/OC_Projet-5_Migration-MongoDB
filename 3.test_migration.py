@@ -156,7 +156,7 @@ def test_migration(collection):
     print("TESTS DE VALIDATION POST-MIGRATION")
     try:
         count = test_nombre_documents(collection)
-        test_documents_non_vides(collection, count)
+        test_documents_name_non_vides(collection, count)
         required_fields = test_champs_obligatoires(collection)
         test_types_numeriques(collection, count)  # <- count ajouté ici
         unique_ids = test_pas_de_doublon(collection)
