@@ -60,6 +60,8 @@ def lire_patients(collection, patient_id):
     first_cancer = list(collection.find({"Medical Condition": "Cancer"}).limit(1))
     if first_cancer:
         print(f"      Exemple : {first_cancer[0]['Name']} ({first_cancer[0]['Age']} ans)")
+        
+    return patient
 
 
 
