@@ -2,7 +2,9 @@
 
 ## Contexte
 
-Dans le cadre de ce projet de migartion de DataSoluTech, on m'a confié un dataset de patients (55 500 lignes) en CSV à migrer vers MongoDB. L'objectif : nettoyer les données, les migrer, conteneuriser le tout avec Docker, et préparer un futur déploiement sur AWS.
+Dans le cadre de ce projet de migartion de DataSoluTech, on m'a confié un dataset de patients (55 500 lignes) en CSV à migrer vers MongoDB. 
+L'objectif principal : nettoyer les données, les migrer, conteneuriser le tout avec Docker, et préparer un futur déploiement sur AWS.
+L'objectif secondaire : mettre en place une structure de base flexible et scalable horizontalement. 
 
 ---
 
@@ -40,7 +42,8 @@ Tous les scripts sont découpés en fonctions (chargement, nettoyage, insertion,
 
 ## Configuration requise avant de lancer le projet
 
-⚠️ **Étape indispensable, à faire avant `docker-compose up`.** Le projet utilise l'authentification MongoDB (voir section "Sécurité et authentification"), ce qui nécessite un fichier `.env` à la racine du projet — non fourni dans le dépôt Git pour des raisons de sécurité.
+**Étape indispensable, à faire avant `docker-compose up`.** 
+Le projet utilise l'authentification MongoDB (voir section "Sécurité et authentification"), ce qui nécessite un fichier `.env` à la racine du projet, non fourni dans le dépôt Git (sécurité).
 
 Créer un fichier `.env` à la racine du projet avec le contenu suivant :
 
@@ -49,11 +52,12 @@ MONGO_ROOT_USER=
 MONGO_ROOT_PASSWORD=
 ```
 
-- `MONGO_ROOT_USER` / `MONGO_ROOT_PASSWORD` : identifiants du compte `admin_si`, créé **automatiquement** par l'image officielle MongoDB au premier démarrage (mécanisme natif `MONGO_INITDB_ROOT_USERNAME`/`MONGO_INITDB_ROOT_PASSWORD`, alimenté par ces deux variables dans `docker-compose.yml`). Ce compte est ensuite utilisé par le pipeline pour la migration, les tests, la gestion des index, et la création des deux autres utilisateurs. Voir la section "Sécurité et authentification" pour le détail des rôles.
+- `MONGO_ROOT_USER` / `MONGO_ROOT_PASSWORD` : identifiants du compte `admin_si`, créé **automatiquement** par l'image officielle MongoDB au premier démarrage (mécanisme natif `MONGO_INITDB_ROOT_USERNAME`/`MONGO_INITDB_ROOT_PASSWORD`, alimenté par ces deux variables dans `docker-compose.yml`). 
+Ce compte est ensuite utilisé par le pipeline pour la migration, les tests, la gestion des index, et la création des deux autres utilisateurs. Voir la section "Sécurité et authentification" pour le détail des rôles.
 
 Sans ce fichier, `docker-compose up` échouera au démarrage du service `mongodb` (variables d'environnement manquantes) ou l'authentification échouera lors de la connexion du service `app`.
 
-⚠️ Ce fichier `.env` n'a d'effet que si le volume `mongo_data` est **vide** (premier démarrage). Si vous relancez le projet après un `docker-compose down` (sans `-v`), les identifiants existants dans le volume restent ceux d'origine, peu importe ce qui est dans `.env`.
+ Ce fichier `.env` n'a d'effet que si le volume `mongo_data` est **vide** (premier démarrage). Si vous relancez le projet après un `docker-compose down` (sans `-v`), les identifiants existants dans le volume restent ceux d'origine, peu importe ce qui est dans `.env`.
 
 ---
 
@@ -73,7 +77,7 @@ docker-compose up
 ```bash
 docker exec -it mongodb mongosh
 ```
-```javascript
+```
 use healthcare_db
 db.patients.countDocuments()   // 54966 attendu
 ```
@@ -219,7 +223,7 @@ Les versions de PyMongo et python-dotenv ont été mises à jour suite à deux a
 | Utilisateur | Rôle | Justification | Création |
 |---|---|---|---|
 | `admin_si` | root (accès complet au serveur) | Compte technique d'administration, utilisé par le pipeline pour migrer les données et gérer les index | Automatique, par l'image Docker officielle de MongoDB (`MONGO_INITDB_ROOT_USERNAME`/`MONGO_INITDB_ROOT_PASSWORD`) |
-| `pipeline_user` | `readWrite` sur `healthcare_db` | Le pipeline consulte les informations sans les modifier | Automatique, via `0.creation_utilisateurs.py` |
+| `pipeline_user` | `readWrite` sur `healthcare_db` | Les utilisateurs du pipeline consultent les informations et les modifient | Automatique, via `0.creation_utilisateurs.py` |
 | `analyste_user` | `read` sur `healthcare_db` | L'analyste consulte les données pour générer des rapports | Automatique, via `0.creation_utilisateurs.py` |
 
 **Note** : pour simplifier le projet, `admin_si` est ici un compte root global (créé nativement par Docker), plutôt qu'un rôle scopé uniquement sur `healthcare_db`. Dans un contexte réel, ce rôle serait restreint plus finement (`userAdmin` + `dbAdmin` + `readWrite` sur `healthcare_db` uniquement).
@@ -237,7 +241,7 @@ MongoDB ne stocke jamais les mots de passe en clair : il applique automatiquemen
 ### Limites connues
 
 - MongoDB ne permet pas nativement de restreindre un utilisateur à **certaines données seulement** (par exemple, un médecin qui ne verrait que ses propres patients, ou une secrétaire limitée à certains champs). Ce filtrage nécessiterait soit une logique applicative en plus, soit des vues MongoDB dédiées, non implémenté ici, pour rester sur un périmètre réaliste pour ce projet.
-- Les mots de passe utilisés sont volontairement simples (contexte d'exercice). En production, il faudrait des mots de passe forts, générés et stockés via un gestionnaire de secrets plutôt qu'en `.env`.
+- Les mots de passe utilisés sont volontairement simples (contexte d'exercice). En production, il faudrait des mots de passe forts.
 
 ---
 

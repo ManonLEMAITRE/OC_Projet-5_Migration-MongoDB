@@ -41,7 +41,7 @@ def creer_utilisateur_si_absent(db, nom_utilisateur, mot_de_passe, roles):
 
 
 def setup_utilisateurs():
-    """Point d'entrée : crée medecin_user et analyste_user si nécessaire."""
+    """Point d'entrée : crée pipeline_user et analyste_user si nécessaire."""
     client, db = connecter_admin()
 
     try:
