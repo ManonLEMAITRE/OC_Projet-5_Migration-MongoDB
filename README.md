@@ -214,13 +214,13 @@ Les versions de PyMongo et python-dotenv ont été mises à jour suite à deux a
 
 ### Utilisateurs et rôles
 
-3 utilisateurs sont utilisés, avec des rôles différenciés selon les profils métier identifiés dans le projet :
+3 utilisateurs sont utilisés, avec des rôles différenciés selon les profils techniques supposés dans le projet :
 
 | Utilisateur | Rôle | Justification | Création |
 |---|---|---|---|
 | `admin_si` | root (accès complet au serveur) | Compte technique d'administration, utilisé par le pipeline pour migrer les données et gérer les index | Automatique, par l'image Docker officielle de MongoDB (`MONGO_INITDB_ROOT_USERNAME`/`MONGO_INITDB_ROOT_PASSWORD`) |
-| `medecin_user` | `readWrite` sur `healthcare_db` | Le personnel soignant lit et modifie les fiches patients | Automatique, via `0.creation_utilisateurs.py` |
-| `secretariat_user` | `read` sur `healthcare_db` | Le secrétariat consulte les informations sans les modifier | Automatique, via `0.creation_utilisateurs.py` |
+| `pipeline_user` | `readWrite` sur `healthcare_db` | Le pipeline consulte les informations sans les modifier | Automatique, via `0.creation_utilisateurs.py` |
+| `analyste_user` | `read` sur `healthcare_db` | L'analyste consulte les données pour générer des rapports | Automatique, via `0.creation_utilisateurs.py` |
 
 **Note** : pour simplifier le projet, `admin_si` est ici un compte root global (créé nativement par Docker), plutôt qu'un rôle scopé uniquement sur `healthcare_db`. Dans un contexte réel, ce rôle serait restreint plus finement (`userAdmin` + `dbAdmin` + `readWrite` sur `healthcare_db` uniquement).
 
@@ -228,7 +228,7 @@ Les versions de PyMongo et python-dotenv ont été mises à jour suite à deux a
 
 L'authentification est activée sur le conteneur MongoDB via l'option `--auth` (dans `docker-compose.yml`, sur le service `mongodb`). Le compte `admin_si` est créé automatiquement par l'image officielle de MongoDB au tout premier démarrage (volume vide), à partir des variables `MONGO_ROOT_USER`/`MONGO_ROOT_PASSWORD` définies dans le `.env` (voir section "Configuration requise avant de lancer le projet").
 
-`medecin_user` et `secretariat_user` sont ensuite créés automatiquement par le script `0.creation_utilisateurs.py`, première étape exécutée par `orchestration_migration_complete.py`. Ce script se connecte avec `admin_si` et crée les deux utilisateurs **s'ils n'existent pas déjà** (idempotent — pas de doublon en cas de relance).
+`pipeline_user` et `analyste_user` sont ensuite créés automatiquement par le script `0.creation_utilisateurs.py`, première étape exécutée par `orchestration_migration_complete.py`. Ce script se connecte avec `admin_si` et crée les deux utilisateurs **s'ils n'existent pas déjà** (idempotent — pas de doublon en cas de relance).
 
 ### Hachage des mots de passe
 
