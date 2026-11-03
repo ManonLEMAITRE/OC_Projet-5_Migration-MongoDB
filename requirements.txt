@@ -1,6 +1,6 @@
 # Outils principaux
 pandas==2.2.0           # Package de manipulation et nettoyage des données CSV
-pymongo==4.6.3         # Librairie Driver MongoDB pour Python
+pymongo==4.18.3         # Librairie Driver MongoDB pour Python
 python-dotenv==1.2.2    # Gestion des variables d'environnement
 
 # Dépendances de Pandas (installées automatiquement)
